@@ -36,7 +36,7 @@ This project, *Retail Reimagined: The Forecasting Framework*, is a comprehensive
 ## How to Run the Project
 1. Clone the repository:
    ```sh
-   git clone https://github.com/yourusername/retail-forecasting.git
+   git clone https://github.com/AnalyticTolu/retail-forecasting.git
    cd retail-forecasting
    ```
 2. Install dependencies in R:
