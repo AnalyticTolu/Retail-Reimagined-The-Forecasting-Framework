@@ -45,7 +45,7 @@ This project, *Retail Reimagined: The Forecasting Framework*, is a comprehensive
    ```
 3. Run the R script to preprocess data and train models.
    ```r
-   source("retail_forecasting.R")
+   source("Retail Reimagined The Forecasting Framework.R")
    ```
 
 ## Future Work
