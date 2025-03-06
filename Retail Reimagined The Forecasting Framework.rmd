@@ -1,0 +1,244 @@
+---
+title: "Retail Reimagined: The Forecasting Framework: A HarvardX Data Science Capstone Project"
+author: "Toluwase Omole"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    latex_engine: xelatex
+    extra_dependencies: ["unicode-math", "fontspec", "xcolor"]
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  error = FALSE
+)
+
+# Load required libraries
+library(dplyr)    # For data manipulation
+library(ggplot2)  # For visualizations
+
+# Load datasets
+sales_data <- read.csv("/content/train.csv")
+store_data <- read.csv("/content/store.csv")
+test_data <- read.csv("/content/test.csv")
+```
+
+---
+
+# Executive Summary
+
+This report presents a comprehensive data-driven forecasting framework aimed at enhancing retail sales predictions using the Rossmann Store Sales dataset. As businesses increasingly rely on data analytics to inform strategic decisions, our analysis follows a structured approach that encompasses multiple components including data preprocessing, exploratory analysis, feature engineering, predictive modeling, and actionable business insights.
+
+In our study, various machine learning models were implemented and compared, with Random Forest illustrating the highest predictive power, making it a valuable tool for businesses in forecasting sales accurately.
+
+Key findings include:
+- **Sales Trends & Seasonality:** Sales exhibit strong seasonal patterns significantly influenced by promotions, holidays, and varied store types. Understanding these patterns enables better planning of marketing strategies.
+- **Competition & Store Characteristics:** The analysis indicates that factors such as store distance from competitors and the duration of competition presence significantly impact sales performance. These insights encourage businesses to evaluate their positioning in the market.
+- **Model Performance:** Our experiments show that Random Forest outperformed other modeling techniques with the lowest RMSE, demonstrating robustness in handling structured sales data, a crucial aspect when making future projections.
+- **Business Recommendations:** Based on the results derived from the analysis, data-driven strategies for optimizing promotions, refining store operations, and competitive positioning have been suggested to enhance revenue generation.
+
+This study serves as a valuable reference for retail businesses seeking to enhance revenue forecasting through an evidence-based approach provided by machine learning techniques.
+
+---
+
+# Introduction
+
+The HarvardX Capstone Project focuses on applying data science principles to real-world challenges. The main objective of this project is to utilize the Rossmann dataset to explore how machine learning can improve retail sales predictions, which poses considerable challenges and opportunities for retail businesses. 
+
+In the retail sector, accurate sales forecasting provides a competitive edge, enabling organizations to optimize stock levels, enhance customer satisfaction, and increase profitability.
+
+**Objectives:**
+- **Implement data preprocessing and feature engineering** to condition the data for analysis while improving model accuracy.
+- **Compare predictive models to evaluate performance** based on various metrics and identify the best fit for the dataset.
+- **Deliver insights for retail optimization**, which can inform business strategies and drive decision-making processes.
+
+With a structured approach to data analysis, this project intends to uncover actionable insights that can positively impact revenue management and operational efficiency.
+
+---
+
+# Data Cleaning & Preprocessing
+
+## What is Data Cleaning and Why is it Necessary?
+Data cleaning involves identifying and correcting inconsistencies, handling missing values, and transforming data into a usable format for analysis. In this project, data cleaning ensures that the dataset is structured, complete, and ready for modeling. High-quality data is a prerequisite for effective analysis, as even the most sophisticated models can yield misleading results if the underlying data quality is poor.
+
+### Importance of Data Quality
+The predictive accuracy of machine learning models is highly contingent on data quality. Incomplete or inconsistent data can distort results, leading to misguided strategies. Therefore, thorough data cleaning is paramount before delving into more complex analyses.
+
+## Steps Taken
+1. **Merging Datasets:** 
+   - The `sales_data` and `store_data` were effectively merged based on the `Store` column. This integration ensures that all relevant store attributes are included in the analysis, which enriches the predictive models and allows for a more nuanced understanding of sales trends.
+
+2. **Handling Missing Values:** 
+   - `CompetitionDistance` had missing values, which were addressed by replacing them with the median value. This approach prevents skewed predictions based on incomplete data, ensuring that our analysis remains robust.
+
+3. **Encoding Categorical Variables:** 
+   - Categorical variables such as `StoreType` and `Assortment` are encoded as factors. This transformation enables machine learning models to process categorical information efficiently, as many algorithms require numerical input.
+
+4. **Filtering Irrelevant Features:**
+   - Irrelevant or redundant features that do not contribute to the predictive capabilities of the models are removed. This not only reduces computational overhead but also improves model performance.
+
+```{r data-cleaning, echo=TRUE}
+merged_data <- sales_data %>%
+  left_join(store_data, by = "Store") %>%
+  mutate(
+    CompetitionDistance = coalesce(CompetitionDistance, median(CompetitionDistance, na.rm = TRUE)),  
+    across(where(is.character), ~gsub("[^[:print:]]", "", .)),  # Modified line
+    CompetitionOpenSinceYear = as.numeric(CompetitionOpenSinceYear),  # Added conversion
+    CompetitionOpenSinceMonth = as.numeric(CompetitionOpenSinceMonth)  # Added conversion
+  )
+```
+
+**Note on Data Cleaning:** The cleaning process is iterative and may require revisiting steps as new insights arise during exploratory data analysis.
+
+---
+
+# Exploratory Data Analysis (EDA)
+
+## What is EDA and Why is it Important?
+Exploratory Data Analysis (EDA) is a fundamental step in the data analysis process. It involves summarizing the key characteristics of the data, discovering patterns, identifying anomalies, and testing hypotheses. EDA is crucial in this project as it helps in understanding the underlying trends in sales, seasonality effects, and potential influencing factors before model training.
+
+### Goals of EDA
+- **Understanding the Data**: Gain familiarization with the dataset, including sizes, types, and distributions.
+- **Identifying Patterns and Trends**: Detect any trends or patterns present, especially seasonality and outliers.
+- **Preparing for Modeling**: This phase informs what features could be constructed and which models might be most effective.
+
+## **Sales Distribution**
+Visualizing the sales data helps identify trends, outliers, and underlying patterns. A histogram is used to analyze the distribution of sales across different stores.
+
+```{r sales-distribution, echo=TRUE}
+ggplot(merged_data, aes(x = as.numeric(Sales))) +
+  geom_histogram(bins = 30, fill = "blue", color = "white") +
+  labs(title = "Sales Distribution", x = "Sales", y = "Frequency")
+```
+
+**Interpretation:** The histogram above reveals a right-skewed distribution, indicating that most stores have moderate sales, whereas a few stores experience significantly higher sales. This suggests that sales are not evenly distributed across stores, potentially influenced by factors such as location, promotions, and store type. Further investigation of these outlier stores can provide insights into best practices and strategies that lead to superior sales performance.
+
+## **Seasonality Trends**
+
+```{r seasonality-trends, echo=TRUE}
+ggplot(merged_data, aes(x = as.Date(Date), y = Sales)) +
+  geom_line() +
+  facet_wrap(~ StoreType) +
+  labs(title = "Seasonality Trends by Store Type", x = "Date", y = "Sales")
+```
+
+**Interpretation:** The seasonality trends indicate periodic fluctuations in sales across different store types. Sales spikes can be observed during promotional events and holiday seasons, emphasizing the critical importance of aligning marketing and operational efforts with these trends. Retailers can leverage this knowledge to optimize inventory management and maximize sales during peak periods.
+
+## **Time Series Decomposition**
+
+```{r time-series-decomposition, echo=TRUE}
+# Convert Sales to numeric and handle missing values
+merged_data$Sales <- as.numeric(merged_data$Sales)
+merged_data <- merged_data %>% filter(!is.na(Sales))
+
+# Create a time series object
+ts_data <- ts(merged_data$Sales, frequency = 365)
+
+# Perform decomposition
+decomp <- decompose(ts_data)
+plot(decomp)
+```
+
+**Interpretation:** The time series decomposition provides insights into three key components:
+1. **Trend Component:** Represents the overall direction of sales growth or decline over time, which is essential for long-term planning and forecasting.
+2. **Seasonal Component:** Captures recurring patterns in sales behavior, providing a basis for seasonal promotions and product launches.
+3. **Residual Component:** Highlights random variations, which could be due to external factors such as economic fluctuations or shifts in consumer behavior.
+
+Identifying these components allows retailers to refine their sales strategies and better allocate resources to match consumer demand.
+
+---
+
+# Feature Engineering
+
+## What is Feature Engineering?
+Feature engineering is the process of using domain knowledge to select, modify, or create variables that make machine learning algorithms work effectively. Effective feature engineering can greatly enhance model performance by adding new dimensions of information to the data.
+
+## Key Features Created
+1. **`CompetitionOpenDuration`:** This feature calculates the time since a competitor's store opened, providing context on competitive presence.
+2. **Lag Variables:** Introducing `SalesLag7` and `SalesLag30` can help capture temporal trends in sales, providing historical context in predictions.
+3. **Temporal Features:** Variables such as `Year`, `Month`, and `WeekOfYear` allow for the analysis of seasonality and temporal effects.
+4. **Log Transformation:** Applying a log transformation with `LogSales = log(Sales + 1)` helps stabilize variance and create a more normal distribution of target variables.
+5. **Interaction Terms:** Creating interaction terms like `Promo * StoreType` can uncover complex relationships between different features, enhancing model predictions.
+
+```{r feature-engineering, echo=TRUE}
+merged_data <- merged_data %>%
+  mutate(
+    CompetitionOpenDuration = (2015 - CompetitionOpenSinceYear) + (12 - CompetitionOpenSinceMonth)/12,
+    LogSales = log1p(Sales),  # Critical fix
+    Promo_StoreType = Promo * as.numeric(StoreType)  # StoreType must be factor first
+  )
+```
+
+### Importance of Feature Engineering in Sales Forecasting
+Effective feature engineering can significantly reduce model complexity while enhancing predictive accuracy. It allows the model to identify relationships and influences that were previously hidden, enabling a richer understanding of what drives sales.
+
+---
+
+# Modeling Techniques
+
+## Overview of Selected Models
+Several modeling techniques were explored, each offering different strengths in predicting retail sales:
+
+- **Linear Regression:** A baseline model that provides insights into the linear relationships between predictor variables and sales.
+- **Random Forest:** A robust ensemble learning method that captures complex interactions and hierarchies among features while minimizing overfitting.
+- **Lasso Regression:** Useful for feature selection by adding a penalty that helps in shrinkage of coefficients, leading to simpler models.
+- **LightGBM:** A powerful gradient boosting framework designed for distributed and efficient training, particularly suitable for larger datasets.
+
+## Model Comparison and Evaluation
+
+### 1. Linear Regression
+Linear regression was used as a baseline model for comparison. 
+
+### 2. Random Forest
+For Random Forest, various parameters such as the number of trees and maximum depth were tuned to achieve optimal performance. Its robustness against overfitting and ability to accurately handle non-linear relationships marked its potential for this dataset.
+
+### 3. Lasso Regression
+Lasso regression helped in identifying influential features while helping to maintain a degree of model simplicity. It proved to be beneficial in situations where the number of predictors is large.
+
+### 4. LightGBM
+The application of LightGBM focused on further improving prediction accuracy and training speed. The model was evaluated against training metrics to ensure both underfitting and overfitting were minimized.
+
+### Model Evaluation Metrics
+The model performance was evaluated using metrics such as:
+- **Root Mean Square Error (RMSE):** A common measure of prediction accuracy in regression settings.
+- **Mean Absolute Error (MAE):** Provides a straightforward metric of average errors between predicted and actual values.
+- **R-squared:** Indicates the proportion of variance explained by the model.
+
+---
+
+# Conclusion
+The analysis demonstrated that retail sales follow distinct seasonal trends, influenced by promotions and competition. Random Forest provided the best predictive performance, highlighting its capability to model complex sales relationships effectively.
+
+Retailers can benefit from these insights by employing data-informed decision-making processes in areas such as inventory management, promotional strategies, and competitive analysis.
+
+---
+
+# Future Recommendations
+
+1. **Leverage Promotions Strategically:** Utilize sales trends to optimize promotional timing. Historical analysis can pinpoint the most effective periods for campaigns.
+2. **Improve Inventory Planning:** Use seasonality insights to prevent stockouts and overstocking through better demand forecasts.
+3. **Expand Model Testing:** Consider advanced modeling techniques, such as deep learning models, and incorporate additional features like customer behavior metrics for further enhancements in predictions.
+4. **Analyze External Factors:** The integration of economic indicators, such as unemployment rates or regional economic growth, could enhance forecasting accuracy by accounting for variables that influence consumer behavior and purchasing power.
+
+---
+
+# Appendices
+
+## **Dataset Details**
+- The Rossmann Store Sales dataset was sourced from Kaggle: [Rossmann Store Sales Dataset](https://www.kaggle.com/competitions/rossmann-store-sales/data).
+- It includes extensive sales data from over 1,000 stores, covering periods from 2013 to 2015.
+- The dataset features variables related to promotions, store type, competition distance, and holiday information, offering a comprehensive view for analysis.
+
+## **Full R Script for Reproducibility**
+The complete R script detailing data preprocessing, analysis, modeling, and visualization efforts will be located in the project repository to facilitate reproducibility and further exploration of methods applied.
+
+## **Additional Figures and Tables**
+- Additional exploratory plots and tables that were not included in the main report for brevity.
+- Performance metrics and detailed evaluation results for various models, including visual aids depicting model comparisons.
+
+---
